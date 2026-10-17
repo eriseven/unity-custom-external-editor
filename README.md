@@ -23,7 +23,7 @@ https://github.com/eriseven/unity-custom-external-editor.git
 https://github.com/eriseven/unity-custom-external-editor.git#v0.1.0
 ```
 
-Unity 所在机器需要能运行 Git。仓库当前为私有仓库，安装前需配置具有此仓库读取权限的 Git 认证。
+Unity 所在机器需要能运行 Git。仓库为公有仓库，可直接通过上述 HTTPS URL 安装，无需 GitHub 认证。
 
 也可以通过 **Add package from disk** 选择本目录的 `package.json` 进行本地试用。不要同时安装旧版单文件脚本；先删除旧的 `Assets/Editor/ProjectScriptEditorSettings.cs`，避免两套恢复逻辑互相干扰。
 
