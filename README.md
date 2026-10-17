@@ -1,105 +1,113 @@
 # Project Script Editor
 
-为不同 Unity 工程记住不同的 External Script Editor，例如工程 A 使用 Rider，工程 B 使用 VS Code。
+为每个 Unity 工程独立启动 Rider 或 VS Code。v0.2.0 不读写 Unity 的全局编辑器偏好，不需要在失焦、关闭或崩溃后还原设置。
 
 - UPM 包名：`com.avg.project-script-editor`
-- 最低 Unity 版本：2022.3；仅在 Editor 中加载，不进入玩家构建。
-- 默认关闭；首次安装不会改变编辑器选择。
-- 配置按工程、按本机用户保存，不写入团队共享的 `ProjectSettings`。
+- Unity 2022.3 及以上；仅在 Editor 中加载。
+- 默认关闭。配置保存在工程自己的 `UserSettings`，不写入团队共享的 `ProjectSettings`。
+- 通过脚本打开回调和插件自己的 Open Project 命令启动 IDE。
 
 ## 安装
 
-GitHub 仓库：<https://github.com/eriseven/unity-custom-external-editor>。`package.json` 位于仓库根目录。
-
-在 Unity 的 **Window → Package Manager → + → Add package from git URL** 中输入仓库 URL，例如：
+在 **Window → Package Manager → + → Add package from git URL** 中输入：
 
 ```text
-https://github.com/eriseven/unity-custom-external-editor.git
+https://github.com/eriseven/unity-custom-external-editor.git#v0.2.0
 ```
 
-推荐固定到 `v0.1.1` 版本：
+[仓库](https://github.com/eriseven/unity-custom-external-editor)为公有仓库。Unity 所在机器需要安装 Git。也可通过 **Add package from disk** 选择仓库根目录的 `package.json`。
 
-```text
-https://github.com/eriseven/unity-custom-external-editor.git#v0.1.1
-```
-
-Unity 所在机器需要能运行 Git。仓库为公有仓库，可直接通过上述 HTTPS URL 安装，无需 GitHub 认证。
-
-也可以通过 **Add package from disk** 选择本目录的 `package.json` 进行本地试用。不要同时安装旧版单文件脚本；先删除旧的 `Assets/Editor/ProjectScriptEditorSettings.cs`，避免两套恢复逻辑互相干扰。
+先删除旧版单文件脚本 `Assets/Editor/ProjectScriptEditorSettings.cs`，避免它继续修改全局偏好。
 
 ## 使用
 
-1. 打开 **Edit → Project Settings → Project Script Editor**，也可用 **Tools → Project Script Editor → Settings...**。
-2. 从 **Detected editors** 选择已安装编辑器，或用 **Browse...**、粘贴绝对路径。macOS 选择 `.app` bundle。**Use Current Editor** 可填入 Unity 当前选择。
-3. 点击 **Save and Enable**。插件会在当前窗口有焦点时暂用该选择；启动、脚本重载和重新获得焦点后也会应用。
-4. 窗口失焦、正常关闭、禁用覆盖或脚本重载前，插件会还原进入本次覆盖前的全局选择。需要单独指定编辑器的其他工程也可分别安装、配置。
+1. 打开 **Edit → Project Settings → Project Script Editor**，或 **Tools → Project Script Editor → Settings...**。
+2. 选择 **Rider** 或 **VS Code**，填写编辑器可执行文件的绝对路径，也可用 **Browse Editor...** 选择。
+3. 点击 **Save and Enable**。双击脚本时会使用此工程的选择。
+4. 要单独打开整个工程，使用 **Tools → Project Script Editor → Open Project**，或设置页的 **Open Project**。
 
-编辑器发现依赖工程中已有的 IDE 集成包。若下拉列表为空，仍可浏览选择路径；Rider、Visual Studio 等的项目生成、调试支持仍由各自的 Unity 集成包提供。
+Windows 选择 Rider 的 `rider64.exe` 或 VS Code 的 `Code.exe`，不支持 `.cmd` / `.bat`。macOS 可填写 `.app` 路径；Linux 填写可执行启动器路径。**Automatic** 按常见文件名识别 Rider / VS Code；自定义文件名请手动指定类型。
 
-更换编辑器时，在插件设置页选择新路径，再点击 **Save and Enable**，无需先禁用。若要在 Unity 原生 **Preferences → External Tools** 中修改，则先点击 **Disable Override**，修改后再用 **Remember Current Editor** 保存，避免焦点恢复把旧值写回。
+Rider 可在 **Rider solution (optional)** 指定已有 `.sln` / `.slnx`，支持绝对路径及相对工程根目录的路径。留空时优先选择与工程同名的解决方案，其次选择根目录唯一的解决方案；有多个候选时提示手动指定，没有时打开工程文件夹。VS Code 总是打开当前工程文件夹。
 
-**Apply Saved Editor** 可手动重新应用。**Disable Override** 停止自动应用、保留工程保存的路径，并归还本次覆盖前的全局选择。如果用户或其他工程期间已经改成另一个值，插件不会覆盖这个新值。卸载导致脚本重载时也会先归还当前覆盖。
+更换编辑器后重新 **Save and Enable** 即可。**Disable** 保留本地路径并停止接管脚本打开，此后遵循 Unity 原有行为。路径失效或启动失败时提示错误，不回退到全局编辑器。
 
-## 从 v0.1.0 升级
+## 隔离范围
 
-v0.1.0 只切换全局偏好，没有归还旧值。因此，使用 Rider 的 B 工程退出后，没有安装插件的 A 工程可能仍读到 Rider。v0.1.1 修复了正常退出、失焦、禁用及脚本重载的还原流程。
+例如 A 工程不安装插件，在 Unity Preferences 中选择 VS Code；B 工程安装插件，在插件设置页选择 Rider。B 的保存、打开脚本、禁用、重载、关闭均不修改 A 使用的全局选择。即使两个工程同时运行或 B 被强制结束，也没有插件写入的共享偏好需要恢复。
 
-更新包 URL 的版本后，先关闭 B，在 A 的 **Preferences → External Tools** 中手动选回 VS Code 一次，然后关闭 A，再打开 B。旧版从未保存 A 原来的选择，升级无法凭空恢复那个历史路径。B 保存在 `UserSettings` 中的 Rider 路径仍然可用，无需重新配置。
+插件不调用 `CodeEditor.SetCodeEditor`、`EditorPrefs`、IDE 注册或初始化接口，不依赖窗口焦点和退出回调。旧版“临时切换再还原”的逻辑已完全移除。每次启动都携带当前工程的目录或解决方案，并在该工程目录下启动进程。
 
-预期顺序：A（无插件）使用 VS Code → 关闭 A → B（有插件）获得焦点后使用 Rider → 正常关闭 B → 再开 A，仍是 VS Code。
+请注意使用入口：
 
-## 本地配置与限制
+| 入口 | 行为 |
+| --- | --- |
+| Project 中双击支持的代码资源 | 使用本工程配置 |
+| 通过 Unity 资源打开回调跳转到脚本 | 使用本工程配置，并传递有效的行号、列号 |
+| 插件自己的 Open Project | 使用本工程配置 |
+| Unity 原生 Preferences → External Tools | 仍显示并控制 Unity 全局设置 |
+| Unity 原生 Open C# Project、绕过资源回调的第三方命令 | 仍遵循原有实现 |
 
-配置保存为：
+接管的扩展名：`.cs`、`.shader`、`.compute`、`.hlsl`、`.cginc`、`.glsl`、`.glslinc`、`.uxml`、`.uss`、`.asmdef`、`.asmref`、`.raytrace`。支持将 Git/registry 包中的虚拟资源路径解析为磁盘路径。批处理时不自动启动 IDE。
 
-```text
-UserSettings/ProjectScriptEditorSettings.asset
-```
+此包只负责启动，不生成 `.sln` / `.csproj`，不初始化 Rider/VS Code 的 Unity 集成或自动配置调试。需要完整项目上下文时，请另行准备解决方案及对应 IDE 支持。启动请求成功也不代表 IDE 已加载完毕；异步启动后的 IDE 自身错误请查看 IDE 日志。
 
-请在使用本插件的每个 Unity 工程根目录的 `.gitignore` 中加入以下规则（如果已忽略整个 `UserSettings`，无需重复）：
+隔离承诺针对本插件的行为。其他插件、旧版本仍在运行的 Unity 进程、用户在原生 Preferences 中的操作，仍可能修改 Unity 的共享设置。IDE 自身是否复用窗口由其行为和设置决定；本插件不传递 VS Code 的 `--reuse-window`。
+
+## 从 v0.1.x 升级
+
+v0.2.0 是启动方式的变更。升级前先禁用旧版覆盖并正常关闭旧版工程，避免旧进程继续运行全局切换逻辑。原本保存的启用状态和编辑器路径继续保留，新增类型默认为 Automatic；Rider / VS Code 的常见路径可自动识别，其他编辑器需重新选择受支持类型和路径。
+
+如果旧版已经把 A 的全局设置改成 Rider，请在 Unity 原生 Preferences 中手动选回 VS Code 一次。新版不会猜测或写回历史值，也不会自动修正此前被污染的全局偏好。此后 B 只需在插件设置页配置 Rider。
+
+## 本地配置
+
+配置文件为 `UserSettings/ProjectScriptEditorSettings.asset`。请在宿主 Unity 工程的 `.gitignore` 中加入（已忽略整个 `UserSettings` 时无需重复）：
 
 ```gitignore
 /UserSettings/ProjectScriptEditorSettings.asset
 ```
 
-包自身的 `.gitignore` 无法代替宿主工程的忽略规则。配置包含个人绝对路径，不适合跨机器共享。
+包自身的忽略规则不能替代宿主工程规则。文件包含本机路径，不适合跨机器共享。
 
-Unity 的编辑器选择仍是用户级共享偏好，本插件通过官方 `CodeEditor.Editor.SetCodeEditor` API 临时切换。备份使用进程内 `SessionState`，重复应用不会把工程自己的覆盖值误当成原值；脚本重载可以读取同一备份。插件不会持续轮询写入，也不会在批处理或 CI 中自动切换编辑器。
+## 验证与复现
 
-这仍不是底层完全隔离：B 获得焦点期间全局值暂时是 Rider；若 A 在此时启动、第三方插件并发写入，仍可能观察到临时值。Unity 崩溃、被强制结束或断电时，退出回调无法执行，可能留下覆盖值，需要手动恢复。不同进程碰巧写入相同的编辑器路径时，也无法仅凭这个共享值区分写入者。正常的失焦、关闭流程会还原，但不能承诺所有并发和异常退出场景下互不影响。
+测试在 Windows 上使用 Unity 2022.3.62f3 和 6000.5.9f1。测试只读取真实全局编辑器偏好，不写入或还原它。测试会修改临时工程自身配置，请勿在日常工程中运行。
 
-不支持将 **Open by file extension** 保存为覆盖值，因为它依赖系统文件关联。编辑器路径失效时会跳过恢复并提示一次；编辑器更新后请重新选择路径。只记住编辑器路径，不覆盖 External Tools 的启动参数、项目生成选项等其他设置。其他插件若同时修改编辑器选择，仍可能发生冲突。
+2026-10-17 的验证结果：
 
-## 验证
+| 验证 | Unity 2022.3.62f3 | Unity 6000.5.9f1 |
+| --- | --- | --- |
+| 本地 Git URL 安装、导入与编译 | 通过 | 通过 |
+| 冒烟测试 | 59 项断言通过 | 59 项断言通过 |
+| 新进程读取配置 | 2 项断言通过 | 2 项断言通过 |
+| 真实子进程参数、工作目录与环境 | 3 组通过 | 3 组通过 |
 
-2026-10-17 在 Windows 上完成以下验证：
+另已同时运行两个配置不同编辑器的测试工程，通过第三个无插件 Unity 2022 工程确认全局偏好不变；强制结束 Unity 6 测试进程后再次检查，仍保持原值，剩余工程正常退出。生产源码检查未发现全局偏好、IDE 集成注册或生命周期还原接口，测试包与发布源码一致（忽略 Git 换行格式）。IDE 启动由记录器或测试回调代替，未进行真实 Rider / VS Code 的桌面交互验收。
 
-| Unity 版本 | 本地 Git URL 安装 | 冒烟测试 | 新进程持久化 |
-| --- | --- | --- | --- |
-| 2022.3.62f3 | 通过，UPM 来源为 Git | 40 项断言通过 | 3 项断言通过 |
-| 6000.5.9f1 | 通过，UPM 来源为 Git | 40 项断言通过 | 3 项断言通过 |
-
-两版均完成真实 Unity 导入与编译，设置页控件构建、USS 导入通过。未验证 macOS/Linux 桌面交互、真实 IDE 启动和两个工程窗口之间的焦点切换；远程仓库的网络与认证也不属于本地 Git 安装测试。
-
-上表的常规测试不包含下面需要单独启用的真实全局偏好退出测试。
-
-另已通过 Unity 6 的真实 `EditorPrefs` 回归：使用生产控制器验证应用、失焦还原、禁用还原、SessionState 备份恢复和实际进程退出，共 5 项断言。退出后，再启动未安装本包的 Unity 2022.3 工程，确认读取到的共享偏好与测试前一致。测试使用不会执行的占位编辑器路径，不启动真实 Rider 或 VS Code；测试前的原始偏好已还原。这项验证不等同于真实 IDE 启动或桌面双窗口焦点切换验收。
-
-`Tests~/Editor` 包含可在临时工程中运行的独立冒烟测试，覆盖恢复条件、无效路径、IDE 集成异常、保存/禁用、UI 构建和跨进程持久化。Unity 忽略以 `~` 结尾的目录，因此测试不会自动导入用户工程，也没有 NUnit 依赖。
-
-在一个全新的临时工程安装本包，再将 `Tests~/Editor` 复制到临时工程的 `Assets/ProjectScriptEditorTests`。使用 Unity CLI 顺序运行：
+`Tests~` 不会自动导入用户工程。在临时工程安装本包，将整个 `Tests~/Editor` 目录（包括 `.asmdef`）复制为 `Assets/ProjectScriptEditorTests`，依次执行：
 
 ```powershell
 unity run <temporary-project> --editor-version <installed-version> -- -executeMethod Avg.ProjectScriptEditor.Tests.SmokeTests.Run
 unity run <temporary-project> --editor-version <installed-version> -- -executeMethod Avg.ProjectScriptEditor.Tests.SmokeTests.VerifyPersistence
 ```
 
-常规测试通过注入回调和内存后端检查选择行为，不启动 IDE、不修改真实全局编辑器选择。测试会写临时工程自己的 `UserSettings`，不要在日常工程中运行。另有 12 项覆盖生命周期回归断言：A 的 VS Code 在 B 释放覆盖后保留、重复应用、更换路径、外部修改、缺省键、初始化异常和重载备份恢复。
+冒烟测试覆盖启动计划、路径与参数、Unity 资源打开回调、包资源解析、错误时不回退、保存/禁用、UI 构建和全局偏好保持不变。第二条命令验证新进程读取本地配置。
 
-`NativePreferenceTests.PrepareQuitRegression` 是单独的真实偏好退出测试，需先关闭其他 Unity 窗口，并显式设置进程环境变量 `PROJECT_SCRIPT_EDITOR_NATIVE_TEST=1`。它会短暂修改真实偏好、通过生产控制器的生命周期回调归还，在正常退出时写入 `native-preference-quit-passed.txt`。测试前的值备份在临时工程的 `native-preference-baseline.json`；若测试进程被强制终止，应按备份恢复原选择。常规测试不会调用这个入口。
+真实子进程参数测试使用 .NET 9 构建记录器，代替 IDE 捕获实际收到的参数、工作目录和环境变量：
 
-跨版本的最后一步：把 `Tests~/NoPluginProbe.cs` 单独放入未安装本包的 Unity 2022.3 临时工程 `Assets/Editor`，设置环境变量 `PROJECT_SCRIPT_EDITOR_BASELINE` 为上述备份文件的绝对路径，执行 `NoPluginProbe.Verify`。它只读取全局偏好，确认 Unity 6 的 B 工程退出后，无插件的 A 工程仍读到原值。
+```powershell
+dotnet build Tests~/Recorder/Recorder.csproj -c Release -o .validation/Recorder
+$env:PROJECT_SCRIPT_EDITOR_RECORDER = (Resolve-Path .validation/Recorder/Recorder.exe).Path
+unity run <temporary-project> --editor-version <installed-version> -- -executeMethod Avg.ProjectScriptEditor.Tests.ProcessLaunchTests.Run
+```
 
-手动验收：同时打开两个工程，分别保存不同编辑器；来回切换窗口并双击脚本，确认使用各自编辑器。再验证禁用、重启、脚本重载、编辑器路径失效，以及 IDE 的行号跳转。自动化测试不替代这些桌面交互检查。
+此测试覆盖两种 IDE 的启动参数及包含空格、引号、中文、反斜杠等内容的往返传递。进程通过 `UseShellExecute=false` 启动；子进程环境会移除从终端继承的 `ELECTRON_RUN_AS_NODE` 和 `VSCODE_IPC_HOOK_CLI`。
 
-实现参考：[Unity CodeEditor 源码](https://github.com/Unity-Technologies/UnityCsReference/blob/2022.3/Editor/Mono/CodeEditor/CodeEditor.cs)、[focusChanged](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/EditorApplication-focusChanged.html)、[UPM Git dependencies](https://docs.unity3d.com/2022.3/Documentation/Manual/upm-git.html)。
+并发及异常退出测试：用两个不同版本的 Unity 二进制，以 `-batchmode -nographics -executeMethod Avg.ProjectScriptEditor.Tests.IsolationTests.Hold` 启动各自临时工程，**不加 `-quit`**。通过进程环境变量 `PROJECT_SCRIPT_EDITOR_TEST_KIND` 分别指定 `VSCode`、`Rider`，等待两个工程各自写出 `isolation-ready.txt`。测试持续检查真实全局偏好，并用注入的启动回调确认各工程选择自己的编辑器。
+
+将 `Tests~/NoPluginProbe.cs` 单独复制到第三个无插件的临时工程 `Assets/Editor`；环境变量 `PROJECT_SCRIPT_EDITOR_BASELINE` 指向任一测试工程生成的 `isolation-baseline.json`，执行 `NoPluginProbe.Verify`。在两个测试进程仍运行时检查一次，再强制结束其中一个测试进程后检查一次。只终止明确识别的临时测试进程。最后在另一个测试工程根目录写入 `isolation-finish.txt` 使其正常退出；测试也会在超时后自行结束。
+
+自动化测试不替代真实 Rider / VS Code 的桌面交互验收。macOS / Linux 的实际进程启动尚未验证。
+
+实现参考：[Unity OnOpenAsset](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/Callbacks.OnOpenAssetAttribute.html)、[Rider 命令行](https://www.jetbrains.com/help/rider/Opening_Files_from_Command_Line.html)、[VS Code 命令行](https://code.visualstudio.com/docs/configure/command-line)、[UPM Git 安装](https://docs.unity3d.com/2022.3/Documentation/Manual/upm-git.html)。

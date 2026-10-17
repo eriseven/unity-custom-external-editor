@@ -8,13 +8,19 @@ namespace Avg.ProjectScriptEditor
     {
         [SerializeField] private bool overrideEnabled;
         [SerializeField] private string editorPath = "";
+        [SerializeField] private EditorKind editorKind;
+        [SerializeField] private string solutionPath = "";
 
         internal bool OverrideEnabled => overrideEnabled;
         internal string EditorPath => editorPath;
+        internal EditorKind Kind => editorKind;
+        internal string SolutionPath => solutionPath;
 
-        internal void Remember(string path)
+        internal void Remember(string path, EditorKind kind, string solution)
         {
             editorPath = path;
+            editorKind = kind;
+            solutionPath = solution;
             overrideEnabled = true;
             Save(true);
         }

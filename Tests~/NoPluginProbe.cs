@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 
 // Copy only this file into Assets/Editor of a disposable project WITHOUT the package.
-// Set PROJECT_SCRIPT_EDITOR_BASELINE to B's native-preference-baseline.json file.
+// Set PROJECT_SCRIPT_EDITOR_BASELINE to B's isolation-baseline.json file.
 public static class NoPluginProbe
 {
     [Serializable]
@@ -24,7 +24,7 @@ public static class NoPluginProbe
         var exists = EditorPrefs.HasKey("kScriptsDefaultApp");
         var path = EditorPrefs.GetString("kScriptsDefaultApp", "");
         if (exists != expected.exists || (exists && path != expected.path))
-            throw new Exception("Project without the package observed a changed global script editor after B exited.");
+            throw new Exception("Project without the package observed a changed global script editor.");
 
         Debug.Log("NO_PLUGIN_CROSS_VERSION_PREFERENCE_PASSED");
     }

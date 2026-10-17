@@ -6,6 +6,9 @@
 /.validation/
 /.vs/
 *.csproj
+!/Tests~/Recorder/Recorder.csproj
+**/bin/
+**/obj/
 *.sln
 *.slnx
 .DS_Store

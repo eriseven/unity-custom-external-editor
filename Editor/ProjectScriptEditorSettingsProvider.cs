@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using Unity.CodeEditor;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -15,7 +13,7 @@ namespace Avg.ProjectScriptEditor
         private ProjectScriptEditorSettingsProvider() : base(SettingsPath, SettingsScope.Project)
         {
             label = "Project Script Editor";
-            keywords = new HashSet<string> { "External", "Script", "Editor", "Rider", "Visual Studio", "VS Code" };
+            keywords = new HashSet<string> { "External", "Script", "Editor", "Rider", "VS Code", "Isolated" };
         }
 
         [SettingsProvider]
@@ -26,106 +24,78 @@ namespace Avg.ProjectScriptEditor
             var panel = new ScrollView();
             panel.AddToClassList("project-script-editor");
             var sheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(StylePath);
-            if (sheet != null)
-                panel.styleSheets.Add(sheet);
+            if (sheet != null) panel.styleSheets.Add(sheet);
             rootElement.Add(panel);
-
             var title = new Label("Project Script Editor");
             title.AddToClassList("title");
             panel.Add(title);
-            panel.Add(new HelpBox("Use this editor while this Unity window has focus. The previous global editor is restored on focus loss, shutdown, disable and script reload. Unity's underlying preference is still shared.", HelpBoxMessageType.Info));
+            panel.Add(new HelpBox("Open scripts using this project's editor without changing Unity's global preferences. Unity Preferences and the built-in Open C# Project command keep their global behavior.", HelpBoxMessageType.Info));
 
+            var settings = ProjectScriptEditorSettings.instance;
             var status = new Label();
             status.AddToClassList("wrapped");
             panel.Add(status);
-            var current = new Label();
-            current.AddToClassList("wrapped");
-            panel.Add(current);
-
-            var settings = ProjectScriptEditorSettings.instance;
-            var pathField = new TextField("Editor path")
+            var kind = new DropdownField("Editor", new List<string> { "Automatic", "Rider", "VS Code" }, (int)settings.Kind);
+            panel.Add(kind);
+            var path = new TextField("Editor executable") { value = settings.EditorPath, name = "editorPath" };
+            panel.Add(path);
+            panel.Add(new Button(() =>
             {
-                value = string.IsNullOrEmpty(settings.EditorPath) ? CodeEditor.CurrentEditorPath : settings.EditorPath,
-                tooltip = "Absolute executable path, or a macOS .app bundle. Changes are saved only when Save and Enable is clicked."
+                var selected = EditorUtility.OpenFilePanel("Select Rider or VS Code executable (.app on macOS)", "",
+                    Application.platform == RuntimePlatform.WindowsEditor ? "exe" : "");
+                if (!string.IsNullOrEmpty(selected)) path.value = selected;
+            }) { text = "Browse Editor..." });
+
+            var solution = new TextField("Rider solution (optional)")
+            {
+                value = settings.SolutionPath, name = "solutionPath",
+                tooltip = "Existing .sln/.slnx, absolute or relative to the project. Empty: detect an existing solution, otherwise open the folder."
             };
-            panel.Add(pathField);
+            panel.Add(solution);
+            panel.Add(new Button(() =>
+            {
+                var selected = EditorUtility.OpenFilePanel("Select existing Rider solution", ProjectScriptEditorController.ProjectDirectory, "");
+                if (!string.IsNullOrEmpty(selected)) solution.value = selected;
+            }) { text = "Browse Solution..." });
 
             var message = new HelpBox("", HelpBoxMessageType.Info);
             message.AddToClassList("hidden");
-
             void ShowMessage(string text, HelpBoxMessageType type)
             {
                 message.text = text;
                 message.messageType = type;
                 message.RemoveFromClassList("hidden");
             }
-
-            var selectionButtons = new VisualElement();
-            selectionButtons.AddToClassList("button-row");
-            selectionButtons.Add(new Button(() => pathField.value = CodeEditor.CurrentEditorPath) { text = "Use Current Editor" });
-            selectionButtons.Add(new Button(() =>
-            {
-                var path = Application.platform == RuntimePlatform.OSXEditor
-                    ? EditorUtility.OpenFolderPanel("Select editor .app bundle", "/Applications", "")
-                    : EditorUtility.OpenFilePanel("Select script editor", "", Application.platform == RuntimePlatform.WindowsEditor ? "exe" : "");
-                if (!string.IsNullOrEmpty(path))
-                    pathField.value = path;
-            }) { text = "Browse..." });
-            panel.Add(selectionButtons);
-
-            var installed = new DropdownField("Detected editors", new List<string> { "Choose an installed editor..." }, 0);
-            var detectedPaths = new List<string> { "" };
-            try
-            {
-                foreach (var entry in CodeEditor.Editor.GetFoundScriptEditorPaths())
-                {
-                    installed.choices.Add(entry.Value + " — " + entry.Key);
-                    detectedPaths.Add(entry.Key);
-                }
-            }
-            catch (Exception exception)
-            {
-                ShowMessage("Editor discovery failed. You can still browse or paste a path. " + exception.Message, HelpBoxMessageType.Warning);
-            }
-            installed.SetEnabled(detectedPaths.Count > 1);
-            installed.RegisterValueChangedCallback(evt =>
-            {
-                var index = installed.choices.IndexOf(evt.newValue);
-                if (index > 0)
-                    pathField.value = detectedPaths[index];
-            });
-            panel.Add(installed);
-
             var actions = new VisualElement();
             actions.AddToClassList("button-row");
             actions.Add(new Button(() =>
             {
-                if (ProjectScriptEditorController.Remember(pathField.value, out var error))
-                    ShowMessage("Saved for this project. See the Console if the editor integration reports an activation error.", HelpBoxMessageType.Info);
-                else
-                    ShowMessage(error, HelpBoxMessageType.Error);
+                if (ProjectScriptEditorController.Remember(path.value, (EditorKind)kind.index, solution.value, out var error))
+                    ShowMessage("Saved for this project. No global preference was changed.", HelpBoxMessageType.Info);
+                else ShowMessage(error, HelpBoxMessageType.Error);
             }) { text = "Save and Enable" });
-            var apply = new Button(ProjectScriptEditorController.ApplySaved) { text = "Apply Saved Editor" };
+            var open = new Button(() =>
+            {
+                if (!ProjectScriptEditorController.TryOpen(null, -1, -1, out var error))
+                    ShowMessage(error, HelpBoxMessageType.Error);
+            }) { text = "Open Project" };
             var disable = new Button(() =>
             {
                 ProjectScriptEditorController.Disable();
-                ShowMessage("Override disabled. The previous global editor has been restored unless the selection was changed elsewhere.", HelpBoxMessageType.Info);
-            }) { text = "Disable Override" };
-            actions.Add(apply);
+                ShowMessage("Disabled. Script opening now follows Unity's normal behavior.", HelpBoxMessageType.Info);
+            }) { text = "Disable" };
+            actions.Add(open);
             actions.Add(disable);
             panel.Add(actions);
             panel.Add(message);
-            panel.Add(new HelpBox("Saved locally in UserSettings/ProjectScriptEditorSettings.asset. To change editors, choose a new path here and click Save and Enable. If using Preferences > External Tools instead, disable the override first.", HelpBoxMessageType.Info));
+            panel.Add(new HelpBox("Saved in UserSettings/ProjectScriptEditorSettings.asset. This launcher does not generate solutions or initialize IDE integration packages. Use an existing solution for Rider's full project context; debugging and project generation remain separate setup steps.", HelpBoxMessageType.Info));
 
             void RefreshStatus()
             {
-                status.text = settings.OverrideEnabled ? "Override enabled: " + settings.EditorPath : "Override disabled";
-                var currentPath = CodeEditor.CurrentEditorPath;
-                current.text = "Unity's current editor: " + (string.IsNullOrEmpty(currentPath) ? "Open by file extension" : currentPath);
-                apply.SetEnabled(settings.OverrideEnabled);
+                status.text = settings.OverrideEnabled ? "Enabled: " + settings.EditorPath : "Disabled";
+                open.SetEnabled(settings.OverrideEnabled);
                 disable.SetEnabled(settings.OverrideEnabled);
             }
-
             RefreshStatus();
             panel.schedule.Execute(RefreshStatus).Every(500);
         }
