@@ -1,0 +1,5 @@
+{
+  "name": "Avg.ProjectScriptEditor.Tests",
+  "references": ["Avg.ProjectScriptEditor.Editor"],
+  "includePlatforms": ["Editor"]
+}

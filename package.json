@@ -1,0 +1,12 @@
+{
+  "name": "com.avg.project-script-editor",
+  "version": "0.1.0",
+  "displayName": "Project Script Editor",
+  "description": "Remember an external script editor per project and per user, and restore it when the Unity Editor gains focus.",
+  "unity": "2022.3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eriseven/unity-custom-external-editor.git"
+  },
+  "keywords": ["editor", "workflow", "external-editor", "project-settings"]
+}

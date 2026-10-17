@@ -1,0 +1,6 @@
+{
+  "name": "Avg.ProjectScriptEditor.Editor",
+  "rootNamespace": "Avg.ProjectScriptEditor",
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

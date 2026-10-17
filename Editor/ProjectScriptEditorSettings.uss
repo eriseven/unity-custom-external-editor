@@ -1,0 +1,31 @@
+.project-script-editor {
+    flex-grow: 1;
+    padding: 12px;
+}
+
+.title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    margin-bottom: 10px;
+}
+
+.wrapped {
+    white-space: normal;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.button-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.button-row > Button {
+    margin-right: 6px;
+}
+
+.hidden {
+    display: none;
+}
