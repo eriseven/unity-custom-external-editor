@@ -34,6 +34,7 @@ namespace Avg.ProjectScriptEditor
             {
                 EditorLauncher.Build(path, kind, solution, ProjectDirectory, null, -1, -1, Platform);
                 ProjectScriptEditorSettings.instance.Remember(path, kind, solution);
+                RiderIntegration.Reconcile();
                 error = null;
                 return true;
             }
@@ -92,7 +93,11 @@ namespace Avg.ProjectScriptEditor
         }
 
         [MenuItem(MenuRoot + "Disable", priority = 21)]
-        internal static void Disable() => ProjectScriptEditorSettings.instance.Disable();
+        internal static void Disable()
+        {
+            ProjectScriptEditorSettings.instance.Disable();
+            RiderIntegration.Stop();
+        }
 
         [MenuItem(MenuRoot + "Open Project", validate = true)]
         [MenuItem(MenuRoot + "Disable", validate = true)]

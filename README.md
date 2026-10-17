@@ -7,6 +7,43 @@
 - 默认关闭。配置保存在工程自己的 `UserSettings`，不写入团队共享的 `ProjectSettings`。
 - 通过脚本打开回调和插件自己的 Open Project 命令启动 IDE。
 
+## Rider 高级集成研究与实验实现（0.3.0-preview.1）
+
+**结论：进程与工程隔离在技术上可行，但官方包没有提供满足这些约束的公开配置接口。当前实现是限定版本的实验适配，不是完整 Rider 高级功能已验收的正式版本。** 稳定版 v0.2.0 仍只负责独立启动。
+
+研究发现，`com.unity.ide.rider@3.0.40` 的 `RiderScriptEditor.InitializeInternal` 在部分分支会调用 `CodeEditor.SetExternalScriptEditor`，不能用于严格隔离。Rider 自带的 EditorPlugin 的 `PluginEntryPoint.Initialize(CancellationToken)` 则能独立启动通信：在本工程 `Library/ProtocolInstance.json` 写入发现信息，用独立的本地端口连接 Rider。其 DLL 内仍有 `EditorPrefs` 写入（例如源码变更标记），所以直接加载原 DLL 也不满足“完全不写全局偏好”。
+
+本预览版采用以下方案：
+
+1. 读取工程保存的 Rider 路径，校验其 EditorPlugin DLL 的 SHA-256。只接受审查过的二进制。
+2. 使用 Mono.Cecil 在内存中适配 DLL：17 处 `EditorPrefs` 调用转到 `ProjectRiderPreferences`；编辑器路径只返回工程配置，写入则保存到本工程 `UserSettings/ProjectRiderIntegration.json`。
+3. 将 DLL 中两个解决方案同步入口替换为资源刷新，避免调用全局 IDE 的初始化或生成器。此版**不会自动生成、更新 `.sln/.csproj`**。
+4. 加载适配后的内存字节，调用带取消令牌的初始化入口。正常禁用或脚本重载时取消通信；崩溃时操作系统释放端口，不需要还原任何全局编辑器设置。
+
+此实现不修改 Unity 方法、不在进程间切换全局值、不改 Rider 安装文件、不向磁盘写入改造后的 DLL，也不随包分发 Rider DLL。它使用未承诺为第三方扩展接口的实现细节；Rider 更新后默认拒绝加载，需重新审查和测试。未通过校验时仍可使用独立启动。
+
+目前支持范围：Windows、Unity **2022.3 / 6000.5**、Rider **2026.2.3.1 / build 262.10968.170**，且 DLL 哈希必须匹配。Rider 路径必须指向真实安装目录下的可执行文件。需要工程根目录已有 `.sln`；本预览不支持 `.slnx` 或工程外解决方案的高级连接。
+
+在插件设置页先保存 Rider 路径，再勾选 **Experimental isolated Rider integration**。开关默认关闭。状态区区分 Disabled、Listening、Connected 和错误。取消勾选会断开连接；CLR 无法单独卸载程序集，因此重新启用或更换 Rider 后需要脚本重载或重启当前工程。检测到其他组件已经加载 Rider DLL 时会拒绝接管，不去修改那套集成。
+
+**测试与未完成验收：** 两版 Unity 均通过实际 DLL 适配、真实通信服务初始化、工程本地偏好写入、未知 DLL 拒绝、关闭连接等 16 项断言。使用 Rider 自带 RD 协议类构建的测试客户端，已通过真实 TCP 握手、编辑器状态 RPC、Console 消息接收和 Pause 切换/恢复验证。测试客户端不是 Rider 桌面客户端。原有独立启动测试通过 60 项断言，真实子进程参数测试 3 组通过。两个工程使用不同端口；强制终止 Unity 6 后，无插件 Unity 2022 的全局偏好仍保持原值，另一个服务正常退出。测试只读取原有全局值，没有将真实全局偏好改成 VS Code。
+
+真实 Rider 桌面客户端仍未完成握手、界面中的 Console/Play/Pause、调试与重载后重连验收。曾尝试打开临时解决方案，但自动化工具无法取得 Rider 的可操作窗口，未记录到桌面客户端连接成功。因此不能承诺安装本预览后所有高级功能均可用，也不能把协议测试通过当作原截图弹窗问题已在真实 Rider 界面修复。
+
+工程私有的通信发现文件即使因崩溃残留，也不会用于其他目录的工程；重启本工程会重新建立端口。偏好文件若在写入时崩溃而损坏，适配层拒绝启动，仅影响本工程。其他插件或用户手动修改原生 Preferences 的行为不在本插件的隔离范围内。
+
+研究依据：[Rider 初始化入口](https://github.com/JetBrains/resharper-unity/blob/05a09ea3337aec129a9dab697690c18c29c43cf8/unity/EditorPlugin/PluginEntryPoint.cs)、[工程通信发现与生命周期](https://github.com/JetBrains/resharper-unity/blob/05a09ea3337aec129a9dab697690c18c29c43cf8/unity/EditorPlugin/Protocol/UnityEditorProtocol.cs)、[原版全局偏好封装](https://github.com/JetBrains/resharper-unity/blob/05a09ea3337aec129a9dab697690c18c29c43cf8/unity/EditorPlugin/EditorPrefsWrapper.cs)。同时核对了本机 DLL 的 IL；上游源码与安装包不一定同步，适配以实际 DLL 哈希为准。
+
+实验版安装 URL（与稳定版二选一）：
+
+```text
+https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.1
+```
+
+复现集成测试时，在临时工程复制 `Tests~/Editor` 并设置 `PROJECT_SCRIPT_EDITOR_RIDER` 为已审查的 Rider 可执行路径。`RiderIntegrationTests.Run` 验证 DLL 适配和生命周期，`RiderIntegrationTests.RunSuite` 另执行独立启动回归（还需先构建记录器并设置 `PROJECT_SCRIPT_EDITOR_RECORDER`）。传递 `-riderIntegrationTests` 和**小写** `-logfile <absolute-log-path>`；Rider 自身的测试日志解析器区分此参数大小写。
+
+`RiderProtocolTests.Run` 是异步协议测试：直接启动 Unity 二进制，加 `-batchmode -nographics -riderIntegrationTests -executeMethod Avg.ProjectScriptEditor.Tests.RiderProtocolTests.Run -logfile <absolute-log-path>`，**不加 `-quit`**，测试会自行退出。不要用会自动添加 `-quit` 的 `unity run` 调用此入口。`RiderIntegrationTests.Hold` 同样采用此方式，用 `rider-ready.txt`、`rider-finish.txt`、`rider-baseline.json` 配合无插件探针执行并发/崩溃回归。
+
 ## 安装
 
 在 **Window → Package Manager → + → Add package from git URL** 中输入：
@@ -36,7 +73,7 @@ Rider 可在 **Rider solution (optional)** 指定已有 `.sln` / `.slnx`，支�
 
 例如 A 工程不安装插件，在 Unity Preferences 中选择 VS Code；B 工程安装插件，在插件设置页选择 Rider。B 的保存、打开脚本、禁用、重载、关闭均不修改 A 使用的全局选择。即使两个工程同时运行或 B 被强制结束，也没有插件写入的共享偏好需要恢复。
 
-插件不调用 `CodeEditor.SetCodeEditor`、`EditorPrefs`、IDE 注册或初始化接口，不依赖窗口焦点和退出回调。旧版“临时切换再还原”的逻辑已完全移除。每次启动都携带当前工程的目录或解决方案，并在该工程目录下启动进程。
+默认独立启动不调用 `CodeEditor.SetCodeEditor`、`EditorPrefs`、IDE 注册或初始化接口，不依赖窗口焦点和退出回调。旧版“临时切换再还原”的逻辑已完全移除。每次启动都携带当前工程的目录或解决方案，并在该工程目录下启动进程。实验 Rider 适配层只读取少量用户偏好作为默认值，所有写入都限定在工程本地；其退出回调仅负责关闭通信。
 
 请注意使用入口：
 
@@ -50,7 +87,7 @@ Rider 可在 **Rider solution (optional)** 指定已有 `.sln` / `.slnx`，支�
 
 接管的扩展名：`.cs`、`.shader`、`.compute`、`.hlsl`、`.cginc`、`.glsl`、`.glslinc`、`.uxml`、`.uss`、`.asmdef`、`.asmref`、`.raytrace`。支持将 Git/registry 包中的虚拟资源路径解析为磁盘路径。批处理时不自动启动 IDE。
 
-此包只负责启动，不生成 `.sln` / `.csproj`，不初始化 Rider/VS Code 的 Unity 集成或自动配置调试。需要完整项目上下文时，请另行准备解决方案及对应 IDE 支持。启动请求成功也不代表 IDE 已加载完毕；异步启动后的 IDE 自身错误请查看 IDE 日志。
+默认模式只负责启动，不生成 `.sln` / `.csproj`，不初始化 Rider/VS Code 的 Unity 集成或自动配置调试。实验 Rider 适配层的能力和限制见上文。需要完整项目上下文时，请另行准备解决方案及对应 IDE 支持。启动请求成功也不代表 IDE 已加载完毕；异步启动后的 IDE 自身错误请查看 IDE 日志。
 
 隔离承诺针对本插件的行为。其他插件、旧版本仍在运行的 Unity 进程、用户在原生 Preferences 中的操作，仍可能修改 Unity 的共享设置。IDE 自身是否复用窗口由其行为和设置决定；本插件不传递 VS Code 的 `--reuse-window`。
 
@@ -66,6 +103,7 @@ v0.2.0 是启动方式的变更。升级前先禁用旧版覆盖并正常关闭�
 
 ```gitignore
 /UserSettings/ProjectScriptEditorSettings.asset
+/UserSettings/ProjectRiderIntegration.json
 ```
 
 包自身的忽略规则不能替代宿主工程规则。文件包含本机路径，不适合跨机器共享。

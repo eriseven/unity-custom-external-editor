@@ -10,11 +10,15 @@ namespace Avg.ProjectScriptEditor
         [SerializeField] private string editorPath = "";
         [SerializeField] private EditorKind editorKind;
         [SerializeField] private string solutionPath = "";
+        [SerializeField] private bool riderIntegrationEnabled;
 
         internal bool OverrideEnabled => overrideEnabled;
         internal string EditorPath => editorPath;
         internal EditorKind Kind => editorKind;
         internal string SolutionPath => solutionPath;
+        internal bool RiderIntegrationEnabled => riderIntegrationEnabled;
+
+        internal void SetRiderIntegration(bool enabled) { riderIntegrationEnabled = enabled; Save(true); }
 
         internal void Remember(string path, EditorKind kind, string solution)
         {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0-preview.1 — 2026-10-17 (experimental)
+
+- Add an opt-in, hash-pinned Windows Rider 2026.2.3.1 adapter for Unity 2022.3 / 6000.5.
+- Redirect the installed EditorPlugin's preference calls to per-project storage in an in-memory assembly copy; leave the original installation and Unity preference APIs untouched.
+- Initialize independent project-local communication with cancellation on disable, reload and exit. Reject unknown binaries and pre-existing integrations.
+- Redirect solution synchronization to asset refresh only. Existing root-level `.sln` and project files are required; automatic solution generation is intentionally outside this preview.
+- Add initialization, preference isolation, protocol, concurrent service and forced termination tests. Full Rider desktop feature acceptance remains pending; this is not a stable advanced-integration release.
+
 ## 0.2.0 — 2026-10-17
 
 - Replace global preference switching with an independent per-project Rider / VS Code launcher. No global preference reads or writes, focus handlers, session leases or shutdown restoration remain in production code.

@@ -1,6 +1,6 @@
 {
   "name": "com.avg.project-script-editor",
-  "version": "0.2.0",
+  "version": "0.3.0-preview.1",
   "displayName": "Project Script Editor",
   "description": "Launch Rider or VS Code per project without changing Unity's global editor preferences.",
   "unity": "2022.3",
@@ -8,5 +8,8 @@
     "type": "git",
     "url": "https://github.com/eriseven/unity-custom-external-editor.git"
   },
-  "keywords": ["editor", "workflow", "external-editor", "project-settings"]
+  "keywords": ["editor", "workflow", "external-editor", "project-settings"],
+  "dependencies": {
+    "com.unity.nuget.mono-cecil": "1.11.6"
+  }
 }

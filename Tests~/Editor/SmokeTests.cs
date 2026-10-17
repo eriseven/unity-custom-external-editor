@@ -20,6 +20,7 @@ namespace Avg.ProjectScriptEditor.Tests
             Directory.CreateDirectory(Path.GetDirectoryName(FixturePath));
             File.WriteAllText(FixturePath, "never executed");
             var settings = ProjectScriptEditorSettings.instance;
+            settings.SetRiderIntegration(false);
             var launcher = ProjectScriptEditorController.Launch;
             int launches = 0;
             EditorLaunchPlan captured = null;
@@ -65,6 +66,7 @@ namespace Avg.ProjectScriptEditor.Tests
                 Check(root.Q<TextField>("editorPath") != null && root.Q<TextField>("solutionPath") != null, "UI fields constructed");
                 Check(root.Query<Button>().ToList().Count == 5, "UI actions constructed");
                 Check(root.Q<DropdownField>().choices.Count == 3, "editor kind selector");
+                Check(root.Q<Toggle>("riderIntegration") != null, "experimental integration opt-in");
                 Check(AssetDatabase.LoadAssetAtPath<StyleSheet>("Packages/com.avg.project-script-editor/Editor/ProjectScriptEditorSettings.uss") != null, "USS imported");
                 provider.OnDeactivate();
                 settings.Remember(FixturePath, EditorKind.Rider, "");

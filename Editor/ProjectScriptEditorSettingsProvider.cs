@@ -32,6 +32,17 @@ namespace Avg.ProjectScriptEditor
             panel.Add(new HelpBox("Open scripts using this project's editor without changing Unity's global preferences. Unity Preferences and the built-in Open C# Project command keep their global behavior.", HelpBoxMessageType.Info));
 
             var settings = ProjectScriptEditorSettings.instance;
+            var integration = new Toggle("Experimental isolated Rider integration") { value = settings.RiderIntegrationEnabled, name = "riderIntegration" };
+            integration.RegisterValueChangedCallback(evt =>
+            {
+                settings.SetRiderIntegration(evt.newValue);
+                RiderIntegration.Reconcile();
+            });
+            panel.Add(integration);
+            var integrationStatus = new Label();
+            integrationStatus.AddToClassList("wrapped");
+            panel.Add(integrationStatus);
+            panel.Add(new HelpBox("Experimental: Windows Rider 2026.2.3.1 only. Uses an in-memory adapted copy of Rider's plugin, with project-local preferences. Existing .sln/.csproj files are required. Disabling disconnects immediately; changing or re-enabling requires a script reload or restart. Unknown builds are refused.", HelpBoxMessageType.Warning));
             var status = new Label();
             status.AddToClassList("wrapped");
             panel.Add(status);
@@ -88,11 +99,12 @@ namespace Avg.ProjectScriptEditor
             actions.Add(disable);
             panel.Add(actions);
             panel.Add(message);
-            panel.Add(new HelpBox("Saved in UserSettings/ProjectScriptEditorSettings.asset. This launcher does not generate solutions or initialize IDE integration packages. Use an existing solution for Rider's full project context; debugging and project generation remain separate setup steps.", HelpBoxMessageType.Info));
+            panel.Add(new HelpBox("Saved in UserSettings. The launcher does not generate solutions. The optional Rider adapter establishes a project-local connection; project generation and debugging setup remain separate steps.", HelpBoxMessageType.Info));
 
             void RefreshStatus()
             {
                 status.text = settings.OverrideEnabled ? "Enabled: " + settings.EditorPath : "Disabled";
+                integrationStatus.text = "Rider integration: " + RiderIntegration.Status;
                 open.SetEnabled(settings.OverrideEnabled);
                 disable.SetEnabled(settings.OverrideEnabled);
             }
