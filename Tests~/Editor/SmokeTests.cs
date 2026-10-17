@@ -20,6 +20,7 @@ namespace Avg.ProjectScriptEditor.Tests
             Directory.CreateDirectory(Path.GetDirectoryName(FixturePath));
             File.WriteAllText(FixturePath, "test fixture; never executed");
             assertions = PolicyTests.Run(Path.GetDirectoryName(FixturePath));
+            assertions += PreferenceLeaseTests.Run();
 
             var settings = ProjectScriptEditorSettings.instance;
             Check(!settings.OverrideEnabled, "new project starts disabled");

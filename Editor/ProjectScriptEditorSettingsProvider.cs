@@ -33,7 +33,7 @@ namespace Avg.ProjectScriptEditor
             var title = new Label("Project Script Editor");
             title.AddToClassList("title");
             panel.Add(title);
-            panel.Add(new HelpBox("Choose an editor for this project and this user. It is restored when this Unity window gains focus. Other projects still share Unity's global editor preference.", HelpBoxMessageType.Info));
+            panel.Add(new HelpBox("Use this editor while this Unity window has focus. The previous global editor is restored on focus loss, shutdown, disable and script reload. Unity's underlying preference is still shared.", HelpBoxMessageType.Info));
 
             var status = new Label();
             status.AddToClassList("wrapped");
@@ -109,7 +109,7 @@ namespace Avg.ProjectScriptEditor
             var disable = new Button(() =>
             {
                 ProjectScriptEditorController.Disable();
-                ShowMessage("Override disabled. Unity keeps its current editor selection.", HelpBoxMessageType.Info);
+                ShowMessage("Override disabled. The previous global editor has been restored unless the selection was changed elsewhere.", HelpBoxMessageType.Info);
             }) { text = "Disable Override" };
             actions.Add(apply);
             actions.Add(disable);

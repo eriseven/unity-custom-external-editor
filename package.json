@@ -1,6 +1,6 @@
 {
   "name": "com.avg.project-script-editor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Project Script Editor",
   "description": "Remember an external script editor per project and per user, and restore it when the Unity Editor gains focus.",
   "unity": "2022.3",
