@@ -7,7 +7,7 @@
 - 默认关闭。配置保存在工程自己的 `UserSettings`，不写入团队共享的 `ProjectSettings`。
 - 通过脚本打开回调和插件自己的 Open Project 命令启动 IDE。
 
-## Rider 高级集成研究与实验实现（0.3.0-preview.1）
+## Rider 高级集成研究与实验实现（0.3.0-preview.2）
 
 **结论：进程与工程隔离在技术上可行，但官方包没有提供满足这些约束的公开配置接口。当前实现是限定版本的实验适配，不是完整 Rider 高级功能已验收的正式版本。** 稳定版 v0.2.0 仍只负责独立启动。
 
@@ -26,7 +26,9 @@
 
 在插件设置页先保存 Rider 路径，再勾选 **Experimental isolated Rider integration**。开关默认关闭。状态区区分 Disabled、Listening、Connected 和错误。取消勾选会断开连接；CLR 无法单独卸载程序集，因此重新启用或更换 Rider 后需要脚本重载或重启当前工程。检测到其他组件已经加载 Rider DLL 时会拒绝接管，不去修改那套集成。
 
-**测试与未完成验收：** 两版 Unity 均通过实际 DLL 适配、真实通信服务初始化、工程本地偏好写入、未知 DLL 拒绝、关闭连接等 16 项断言。使用 Rider 自带 RD 协议类构建的测试客户端，已通过真实 TCP 握手、编辑器状态 RPC、Console 消息接收和 Pause 切换/恢复验证。测试客户端不是 Rider 桌面客户端。原有独立启动测试通过 60 项断言，真实子进程参数测试 3 组通过。两个工程使用不同端口；强制终止 Unity 6 后，无插件 Unity 2022 的全局偏好仍保持原值，另一个服务正常退出。测试只读取原有全局值，没有将真实全局偏好改成 VS Code。
+**测试与未完成验收：** preview.1 发布时，两版 Unity 均通过实际 DLL 适配、真实通信服务初始化、工程本地偏好写入、未知 DLL 拒绝、关闭连接等 16 项断言。使用 Rider 自带 RD 协议类构建的测试客户端，已通过真实 TCP 握手、编辑器状态 RPC、Console 消息接收和 Pause 切换/恢复验证。测试客户端不是 Rider 桌面客户端。原有独立启动测试通过 60 项断言，真实子进程参数测试 3 组通过。两个工程使用不同端口；强制终止 Unity 6 后，无插件 Unity 2022 的全局偏好仍保持原值，另一个服务正常退出。测试只读取原有全局值，没有将真实全局偏好改成 VS Code。
+
+preview.2 修复与 `0Harmony` 内嵌 Cecil 类型冲突导致的 `CS0433`：插件及测试程序集启用 `overrideReferences`，只显式引用 `Mono.Cecil.dll`，保留 Harmony 自身的导入设置。已用官方 Lib.Harmony 2.2.0 的 net472 DLL 在 Unity 6 复现旧版错误；修复后 Unity 2022.3.62f3 / 6000.5.9f1 均通过共存检查、60 项启动断言和 3 组真实子进程测试，全局编辑器偏好保持不变。本次没有重跑高级连接协议测试：本机 Rider DLL 已更新，不再匹配原先审查的哈希；适配器仍拒绝未经验证的版本。
 
 真实 Rider 桌面客户端仍未完成握手、界面中的 Console/Play/Pause、调试与重载后重连验收。曾尝试打开临时解决方案，但自动化工具无法取得 Rider 的可操作窗口，未记录到桌面客户端连接成功。因此不能承诺安装本预览后所有高级功能均可用，也不能把协议测试通过当作原截图弹窗问题已在真实 Rider 界面修复。
 
@@ -37,10 +39,12 @@
 实验版安装 URL（与稳定版二选一）：
 
 ```text
-https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.1
+https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.2
 ```
 
 复现集成测试时，在临时工程复制 `Tests~/Editor` 并设置 `PROJECT_SCRIPT_EDITOR_RIDER` 为已审查的 Rider 可执行路径。`RiderIntegrationTests.Run` 验证 DLL 适配和生命周期，`RiderIntegrationTests.RunSuite` 另执行独立启动回归（还需先构建记录器并设置 `PROJECT_SCRIPT_EDITOR_RECORDER`）。传递 `-riderIntegrationTests` 和**小写** `-logfile <absolute-log-path>`；Rider 自身的测试日志解析器区分此参数大小写。
+
+复现 Harmony 回归时，将官方 [Lib.Harmony 2.2.0](https://www.nuget.org/packages/Lib.Harmony/2.2.0) 包内 `lib/net472/0Harmony.dll` 复制到临时工程的 `Assets/HarmonyRegression/Editor`，保持 Auto Reference 开启。复制 `Tests~/Editor` 到该工程并设置 `PROJECT_SCRIPT_EDITOR_RECORDER`，通过 `unity run <project> --editor-version <version> -- -nographics -executeMethod Avg.ProjectScriptEditor.Tests.HarmonyCoexistenceTests.Run -logfile <absolute-log-path>` 运行。测试检查两套 Cecil 同时存在、插件引用正确且其他工程脚本仍自动引用 Harmony，再执行启动回归；不需要启用 Rider 高级集成。引用范围的配置依据：[Unity 程序集引用说明](https://docs.unity.cn/6000.0/Documentation/Manual/assembly-definitions-referencing.html)。
 
 `RiderProtocolTests.Run` 是异步协议测试：直接启动 Unity 二进制，加 `-batchmode -nographics -riderIntegrationTests -executeMethod Avg.ProjectScriptEditor.Tests.RiderProtocolTests.Run -logfile <absolute-log-path>`，**不加 `-quit`**，测试会自行退出。不要用会自动添加 `-quit` 的 `unity run` 调用此入口。`RiderIntegrationTests.Hold` 同样采用此方式，用 `rider-ready.txt`、`rider-finish.txt`、`rider-baseline.json` 配合无插件探针执行并发/崩溃回归。
 

@@ -1,5 +1,7 @@
 {
   "name": "Avg.ProjectScriptEditor.Tests",
   "references": ["Avg.ProjectScriptEditor.Editor"],
-  "includePlatforms": ["Editor"]
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["Mono.Cecil.dll"]
 }

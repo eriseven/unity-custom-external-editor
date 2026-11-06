@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0-preview.2 — 2026-11-06 (experimental)
+
+- Fix CS0433 when Harmony embeds its own Mono.Cecil types. Explicitly reference only `Mono.Cecil.dll` from the plugin and test assemblies, leaving other plugins' import settings unchanged.
+- Add a Unity compilation/runtime regression with the official Harmony 2.2.0 DLL alongside Unity's Mono.Cecil package. No editor preference or Rider adapter behavior changes.
+
 ## 0.3.0-preview.1 — 2026-10-17 (experimental)
 
 - Add an opt-in, hash-pinned Windows Rider 2026.2.3.1 adapter for Unity 2022.3 / 6000.5.
