@@ -64,8 +64,8 @@ namespace Avg.ProjectScriptEditor.Tests
                 var root = new VisualElement();
                 provider.OnActivate("", root);
                 Check(root.Q<TextField>("editorPath") != null && root.Q<TextField>("solutionPath") != null, "UI fields constructed");
-                Check(root.Query<Button>().ToList().Count == 5, "UI actions constructed");
-                Check(root.Q<DropdownField>().choices.Count == 3, "editor kind selector");
+                Check(root.Query<Button>().ToList().Count == 6, "UI actions constructed");
+                Check(root.Q<DropdownField>("editorKind").choices.Count == 3, "editor kind selector");
                 Check(root.Q<Toggle>("riderIntegration") != null, "experimental integration opt-in");
                 Check(AssetDatabase.LoadAssetAtPath<StyleSheet>("Packages/com.avg.project-script-editor/Editor/ProjectScriptEditorSettings.uss") != null, "USS imported");
                 provider.OnDeactivate();

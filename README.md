@@ -7,7 +7,7 @@
 - 默认关闭。配置保存在工程自己的 `UserSettings`，不写入团队共享的 `ProjectSettings`。
 - 通过脚本打开回调和插件自己的 Open Project 命令启动 IDE。
 
-## Rider 高级集成研究与实验实现（0.3.0-preview.3）
+## Rider 高级集成研究与实验实现（0.3.0-preview.4）
 
 **结论：不修改 Unity 全局偏好的工程级高级集成可行，已通过真实 Rider 桌面客户端的核心功能验收。** 官方包没有提供满足这些约束的公开配置接口，因此当前实现仍是限定版本、默认关闭的实验适配；并非所有 Rider 高级功能均已验收。稳定版 v0.2.0 仍只负责独立启动。
 
@@ -39,7 +39,7 @@
 实验版安装 URL（与稳定版二选一）：
 
 ```text
-https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.3
+https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.4
 ```
 
 复现集成测试时，在临时工程复制 `Tests~/Editor` 并设置 `PROJECT_SCRIPT_EDITOR_RIDER` 为已审查的 Rider 可执行路径。`RiderIntegrationTests.Run` 验证 DLL 适配和生命周期，`RiderIntegrationTests.RunSuite` 另执行独立启动回归（还需先构建记录器并设置 `PROJECT_SCRIPT_EDITOR_RECORDER`）。传递 `-riderIntegrationTests` 和**小写** `-logfile <absolute-log-path>`；Rider 自身的测试日志解析器区分此参数大小写。
@@ -63,11 +63,19 @@ https://github.com/eriseven/unity-custom-external-editor.git#v0.2.0
 ## 使用
 
 1. 打开 **Edit → Project Settings → Project Script Editor**，或 **Tools → Project Script Editor → Settings...**。
-2. 选择 **Rider** 或 **VS Code**，填写编辑器可执行文件的绝对路径，也可用 **Browse Editor...** 选择。
+2. 在 preview.4 及以后，可从 **Installed editors** 选择自动发现的安装版本；名称、版本和路径分别列出，选择后自动填入类型及路径。也可手动选择 **Rider** / **VS Code** 并填写绝对路径，或使用 **Browse Editor...**。
 3. 点击 **Save and Enable**。双击脚本时会使用此工程的选择。
 4. 要单独打开整个工程，使用 **Tools → Project Script Editor → Open Project**，或设置页的 **Open Project**。
 
 Windows 选择 Rider 的 `rider64.exe` 或 VS Code 的 `Code.exe`，不支持 `.cmd` / `.bat`。macOS 可填写 `.app` 路径；Linux 填写可执行启动器路径。**Automatic** 按常见文件名识别 Rider / VS Code；自定义文件名请手动指定类型。
+
+**自动发现（preview.4）：** 打开设置页时扫描一次，安装或更新 IDE 后可点击 **Refresh Editors**。Windows 只读检查当前用户/系统的 32/64 位安装记录、App Paths、Program Files、用户 Programs、JetBrains/Toolbox 目录和 PATH；支持 VS Code Insiders 与多个安装版本。版本优先读取产品元数据，Windows 可回退到可执行文件版本，因此不会把旧安装目录名当作真实版本。相同路径去重，同一目录的 `rider.exe` / `rider64.exe` 合并并优先后者。
+
+扫描不调用 Unity 的 IDE 注册或初始化接口，不写原生 `EditorPrefs`，也不执行被发现的程序。下拉选择只填入表单，点击 **Save and Enable** 才写入当前工程的 `UserSettings`。刷新列表、找不到安装或删除某版本时保留原有输入和已保存路径，不自动切到其他版本。没有检测到时仍可手动浏览；不会扫描整个磁盘，未登记的便携安装、网络路径及未覆盖的自定义目录可能需要手动选择。
+
+macOS 提供 Applications / 用户 Applications / Toolbox 目录发现，Linux 提供常见安装目录、Toolbox 和 PATH 发现；两者目前只有目录布局测试，真实系统发现仍待验证。发现一个 Rider 版本不代表其高级集成已受支持，实验集成继续执行独立的 DLL 哈希校验。
+
+preview.4 在 Windows 的 Unity 2022.3.62f3 / 6000.5.9f1 验证了多版本目录、重复启动器、失效路径、错误元数据、注册表图标路径解析及真实 EditorWindow 下拉/刷新/保存事件；本机实际发现 Rider 2026.2.4.1 和 VS Code 1.145.1。两版各通过 26 项发现/选择断言、60 项启动断言及 3 组真实子进程测试；本机扫描耗时分别为 89 / 104 ms。另在 Unity 6 GUI 实际选择并保存 VS Code，七项原生偏好保持不变。复现入口为 `Avg.ProjectScriptEditor.Tests.EditorDiscoveryTests.RunSuite`，临时工程准备与记录器环境变量同下文；可设置 `PROJECT_SCRIPT_EDITOR_RIDER` / `PROJECT_SCRIPT_EDITOR_CODE` 为期望发现的真实可执行路径，额外断言本机扫描结果。`EditorDiscoveryTests.Preview` 仅用于 GUI 临时工程手动验收：监测原生偏好十分钟，完成后在 `Library` 创建 `discovery-preview-finish` 使其验证并退出，重跑前删除该标记。
 
 Rider 可在 **Rider solution (optional)** 指定已有 `.sln` / `.slnx`，支持绝对路径及相对工程根目录的路径。留空时优先选择与工程同名的解决方案，其次选择根目录唯一的解决方案；有多个候选时提示手动指定，没有时打开工程文件夹。VS Code 总是打开当前工程文件夹。
 

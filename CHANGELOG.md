@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0-preview.4 — 2026-11-06 (experimental)
+
+- Discover installed Rider and VS Code/Insiders through read-only Windows installation records, known installation/Toolbox directories, and PATH. List multiple versions with version metadata and paths; deduplicate Rider launchers within one Windows installation.
+- Add an Installed editors dropdown and Refresh Editors action. Selecting fills the executable and editor kind; only Save and Enable persists the project choice. Refreshing or missing installations never silently replaces saved or manually entered paths.
+- Keep manual browsing and all global-preference isolation behavior. Discovery does not initialize IDE integrations or execute detected programs; Rider's advanced integration still requires an audited build.
+- Add multi-version, stale/duplicate path, metadata, platform-layout and actual EditorWindow interaction tests, plus Windows machine discovery and GUI selection/save validation.
+
 ## 0.3.0-preview.3 — 2026-11-06 (experimental)
 
 - Audit and support Windows Rider 2026.2.4.1 (262.11879.119), retaining the previous hash-pinned version. Require exactly 17 preference redirects and two replaced solution-sync methods.

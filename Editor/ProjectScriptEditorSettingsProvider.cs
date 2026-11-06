@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -9,6 +11,7 @@ namespace Avg.ProjectScriptEditor
     {
         internal const string SettingsPath = "Project/Project Script Editor";
         private const string StylePath = "Packages/com.avg.project-script-editor/Editor/ProjectScriptEditorSettings.uss";
+        internal static Func<List<EditorInstallation>> Discover = EditorDiscovery.FindInstalled;
 
         private ProjectScriptEditorSettingsProvider() : base(SettingsPath, SettingsScope.Project)
         {
@@ -46,10 +49,44 @@ namespace Avg.ProjectScriptEditor
             var status = new Label();
             status.AddToClassList("wrapped");
             panel.Add(status);
-            var kind = new DropdownField("Editor", new List<string> { "Automatic", "Rider", "VS Code" }, (int)settings.Kind);
+            var kind = new DropdownField("Editor", new List<string> { "Automatic", "Rider", "VS Code" }, (int)settings.Kind) { name = "editorKind" };
+            var installed = new DropdownField("Installed editors") { name = "installedEditors" };
+            panel.Add(installed);
+            var discoveryStatus = new Label();
+            discoveryStatus.AddToClassList("wrapped");
+            panel.Add(discoveryStatus);
             panel.Add(kind);
             var path = new TextField("Editor executable") { value = settings.EditorPath, name = "editorPath" };
             panel.Add(path);
+            var installations = new List<EditorInstallation>();
+            void MatchSelection()
+            {
+                var match = installations.FindIndex(i => EditorDiscovery.PathComparer(ProjectScriptEditorController.Platform).Equals(i.Path, path.value.Trim()) &&
+                    (kind.index == 0 || kind.index == (int)i.Kind));
+                installed.SetValueWithoutNotify(installed.choices[match + 1]);
+                installed.tooltip = match >= 0 ? installations[match].Path : "Enter a path or browse for an editor. Save and Enable applies it to this project.";
+            }
+            void RefreshEditors()
+            {
+                installations = Discover();
+                installed.choices = new[] { "Custom (manual path)" }.Concat(installations.Select(i => i.Label)).ToList();
+                MatchSelection();
+                discoveryStatus.text = installations.Count == 0 ? "No installed editors found. Browse for an editor or enter its path." :
+                    "Found " + installations.Count + " installations. Select one, then Save and Enable. Rider advanced integration still requires a supported build.";
+            }
+            installed.RegisterValueChangedCallback(evt =>
+            {
+                var index = installed.index - 1;
+                if (index < 0 || index >= installations.Count) return;
+                var selected = installations[index];
+                kind.SetValueWithoutNotify(kind.choices[(int)selected.Kind]);
+                path.SetValueWithoutNotify(selected.Path);
+                installed.tooltip = selected.Path;
+            });
+            path.RegisterValueChangedCallback(evt => MatchSelection());
+            kind.RegisterValueChangedCallback(evt => MatchSelection());
+            panel.Add(new Button(RefreshEditors) { text = "Refresh Editors", name = "refreshEditors" });
+            RefreshEditors();
             panel.Add(new Button(() =>
             {
                 var selected = EditorUtility.OpenFilePanel("Select Rider or VS Code executable (.app on macOS)", "",
@@ -84,7 +121,7 @@ namespace Avg.ProjectScriptEditor
                 if (ProjectScriptEditorController.Remember(path.value, (EditorKind)kind.index, solution.value, out var error))
                     ShowMessage("Saved for this project. No global preference was changed.", HelpBoxMessageType.Info);
                 else ShowMessage(error, HelpBoxMessageType.Error);
-            }) { text = "Save and Enable" });
+            }) { text = "Save and Enable", name = "saveEditor" });
             var open = new Button(() =>
             {
                 if (!ProjectScriptEditorController.TryOpen(null, -1, -1, out var error))

@@ -1,6 +1,6 @@
 {
   "name": "com.avg.project-script-editor",
-  "version": "0.3.0-preview.3",
+  "version": "0.3.0-preview.4",
   "displayName": "Project Script Editor",
   "description": "Launch Rider or VS Code per project without changing Unity's global editor preferences.",
   "unity": "2022.3",
