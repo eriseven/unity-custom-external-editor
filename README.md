@@ -7,9 +7,9 @@
 - 默认关闭。配置保存在工程自己的 `UserSettings`，不写入团队共享的 `ProjectSettings`。
 - 通过脚本打开回调和插件自己的 Open Project 命令启动 IDE。
 
-## Rider 高级集成研究与实验实现（0.3.0-preview.2）
+## Rider 高级集成研究与实验实现（0.3.0-preview.3）
 
-**结论：进程与工程隔离在技术上可行，但官方包没有提供满足这些约束的公开配置接口。当前实现是限定版本的实验适配，不是完整 Rider 高级功能已验收的正式版本。** 稳定版 v0.2.0 仍只负责独立启动。
+**结论：不修改 Unity 全局偏好的工程级高级集成可行，已通过真实 Rider 桌面客户端的核心功能验收。** 官方包没有提供满足这些约束的公开配置接口，因此当前实现仍是限定版本、默认关闭的实验适配；并非所有 Rider 高级功能均已验收。稳定版 v0.2.0 仍只负责独立启动。
 
 研究发现，`com.unity.ide.rider@3.0.40` 的 `RiderScriptEditor.InitializeInternal` 在部分分支会调用 `CodeEditor.SetExternalScriptEditor`，不能用于严格隔离。Rider 自带的 EditorPlugin 的 `PluginEntryPoint.Initialize(CancellationToken)` 则能独立启动通信：在本工程 `Library/ProtocolInstance.json` 写入发现信息，用独立的本地端口连接 Rider。其 DLL 内仍有 `EditorPrefs` 写入（例如源码变更标记），所以直接加载原 DLL 也不满足“完全不写全局偏好”。
 
@@ -22,15 +22,15 @@
 
 此实现不修改 Unity 方法、不在进程间切换全局值、不改 Rider 安装文件、不向磁盘写入改造后的 DLL，也不随包分发 Rider DLL。它使用未承诺为第三方扩展接口的实现细节；Rider 更新后默认拒绝加载，需重新审查和测试。未通过校验时仍可使用独立启动。
 
-目前支持范围：Windows、Unity **2022.3 / 6000.5**、Rider **2026.2.3.1 / build 262.10968.170**，且 DLL 哈希必须匹配。Rider 路径必须指向真实安装目录下的可执行文件。需要工程根目录已有 `.sln`；本预览不支持 `.slnx` 或工程外解决方案的高级连接。
+目前支持范围：Windows、Unity **2022.3 / 6000.5**、Rider **2026.2.3.1 / build 262.10968.170** 或 **2026.2.4.1 / build 262.11879.119**，且 DLL 哈希必须匹配。Rider 路径必须指向真实安装目录下的可执行文件。需要工程根目录已有 `.sln`；本预览不支持 `.slnx` 或工程外解决方案的高级连接。
 
 在插件设置页先保存 Rider 路径，再勾选 **Experimental isolated Rider integration**。开关默认关闭。状态区区分 Disabled、Listening、Connected 和错误。取消勾选会断开连接；CLR 无法单独卸载程序集，因此重新启用或更换 Rider 后需要脚本重载或重启当前工程。检测到其他组件已经加载 Rider DLL 时会拒绝接管，不去修改那套集成。
 
-**测试与未完成验收：** preview.1 发布时，两版 Unity 均通过实际 DLL 适配、真实通信服务初始化、工程本地偏好写入、未知 DLL 拒绝、关闭连接等 16 项断言。使用 Rider 自带 RD 协议类构建的测试客户端，已通过真实 TCP 握手、编辑器状态 RPC、Console 消息接收和 Pause 切换/恢复验证。测试客户端不是 Rider 桌面客户端。原有独立启动测试通过 60 项断言，真实子进程参数测试 3 组通过。两个工程使用不同端口；强制终止 Unity 6 后，无插件 Unity 2022 的全局偏好仍保持原值，另一个服务正常退出。测试只读取原有全局值，没有将真实全局偏好改成 VS Code。
+**preview.3 验收（2026-11-06）：** 真实 Rider 2026.2.4.1 与 Unity 6000.5.9f1 已完成连接、Unity Console 消息显示、Play/Pause/Resume/Stop、脚本编译及 Play 域重载后的自动重连；实际附加调试器命中断点，单步后确认局部变量 `answer = 42`。高级集成不再仅由协议测试客户端代替验证。Unity 2022.3 的本轮验收是自动化 DLL/协议测试，未重复完整桌面交互。
 
-preview.2 修复与 `0Harmony` 内嵌 Cecil 类型冲突导致的 `CS0433`：插件及测试程序集启用 `overrideReferences`，只显式引用 `Mono.Cecil.dll`，保留 Harmony 自身的导入设置。已用官方 Lib.Harmony 2.2.0 的 net472 DLL 在 Unity 6 复现旧版错误；修复后 Unity 2022.3.62f3 / 6000.5.9f1 均通过共存检查、60 项启动断言和 3 组真实子进程测试，全局编辑器偏好保持不变。本次没有重跑高级连接协议测试：本机 Rider DLL 已更新，不再匹配原先审查的哈希；适配器仍拒绝未经验证的版本。
+两版 Unity 均通过 16 项适配/生命周期断言、60 项启动断言、3 组真实子进程参数测试，以及 TCP 握手、状态 RPC、Console 和 Pause 协议测试。测试工程同时放置官方 Harmony 2.2.0；preview.2 的 CS0433 修复继续有效。并行运行两版 Unity 时使用不同端口；强制结束 Unity 2022 测试进程后，Unity 6 的真实 Rider 客户端仍能控制 Play，第三个无插件工程确认全局编辑器值不变。
 
-真实 Rider 桌面客户端仍未完成握手、界面中的 Console/Play/Pause、调试与重载后重连验收。曾尝试打开临时解决方案，但自动化工具无法取得 Rider 的可操作窗口，未记录到桌面客户端连接成功。因此不能承诺安装本预览后所有高级功能均可用，也不能把协议测试通过当作原截图弹窗问题已在真实 Rider 界面修复。
+测试保留机器原有全局设置（本次原值为 Rider），没有为了构造场景将其改成 VS Code，也没有临时切换再还原。桌面观察器持续比较七项原生偏好。Profiler、测试运行器、解决方案生成等未列出的高级功能不在此次验收范围。审查哈希、测试范围及复现步骤见 [Rider 2026.2.4.1 验证记录](Documentation~/Rider-2026.2.4.1-validation.md)。旧版 Rider 的哈希继续保留，本次没有重新运行旧版桌面客户端。
 
 工程私有的通信发现文件即使因崩溃残留，也不会用于其他目录的工程；重启本工程会重新建立端口。偏好文件若在写入时崩溃而损坏，适配层拒绝启动，仅影响本工程。其他插件或用户手动修改原生 Preferences 的行为不在本插件的隔离范围内。
 
@@ -39,7 +39,7 @@ preview.2 修复与 `0Harmony` 内嵌 Cecil 类型冲突导致的 `CS0433`：插
 实验版安装 URL（与稳定版二选一）：
 
 ```text
-https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.2
+https://github.com/eriseven/unity-custom-external-editor.git#v0.3.0-preview.3
 ```
 
 复现集成测试时，在临时工程复制 `Tests~/Editor` 并设置 `PROJECT_SCRIPT_EDITOR_RIDER` 为已审查的 Rider 可执行路径。`RiderIntegrationTests.Run` 验证 DLL 适配和生命周期，`RiderIntegrationTests.RunSuite` 另执行独立启动回归（还需先构建记录器并设置 `PROJECT_SCRIPT_EDITOR_RECORDER`）。传递 `-riderIntegrationTests` 和**小写** `-logfile <absolute-log-path>`；Rider 自身的测试日志解析器区分此参数大小写。

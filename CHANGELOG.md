@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0-preview.3 — 2026-11-06 (experimental)
+
+- Audit and support Windows Rider 2026.2.4.1 (262.11879.119), retaining the previous hash-pinned version. Require exactly 17 preference redirects and two replaced solution-sync methods.
+- Validate the actual Rider desktop with Unity 6000.5.9f1: Console, Play/Pause/Resume/Stop, reconnect after script compilation and Play domain reload, debugger attachment, a bound breakpoint and single stepping with an inspected local value.
+- Revalidate both Unity versions with Harmony 2.2.0 present, independent launching, protocol tests, and concurrent/crash isolation. No native Unity preferences were written or restored.
+- Add an opt-in passive desktop acceptance observer, a runtime debugging fixture, and a reproducible validation report. Automatic solution generation and untested advanced features remain outside this preview's acceptance scope.
+
 ## 0.3.0-preview.2 — 2026-11-06 (experimental)
 
 - Fix CS0433 when Harmony embeds its own Mono.Cecil types. Explicitly reference only `Mono.Cecil.dll` from the plugin and test assemblies, leaving other plugins' import settings unchanged.

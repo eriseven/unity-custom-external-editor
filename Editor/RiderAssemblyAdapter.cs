@@ -14,14 +14,19 @@ namespace Avg.ProjectScriptEditor
     {
         // Audited Windows Rider 2026.2.3.1, build 262.10968.170, Unity 2022.3+ plugin.
         internal const string SupportedHash = "1E6818D3C65AB2B2DA92632F5721612324EE34F208C042C449FF7353B662A48A";
+        // Audited Windows Rider 2026.2.4.1, build 262.11879.119.
+        internal const string UpdatedHash = "F76CD56788833A2395C3D8FB2E0B343D4BC77BF75862112A0C67C5187092AA5F";
         internal const string PluginName = "JetBrains.Rider.Unity.Editor.Plugin.2022.3.Net46.Repacked.dll";
         internal const string EntryType = "JetBrains.Rider.Unity.Editor.PluginEntryPoint";
 
         internal static byte[] Adapt(byte[] original, out int redirected)
         {
             using (var sha = SHA256.Create())
-                if (BitConverter.ToString(sha.ComputeHash(original)).Replace("-", "") != SupportedHash)
-                    throw new NotSupportedException("This Rider DLL has not been audited. Supported: Windows Rider 2026.2.3.1 (262.10968.170). Independent launching remains available.");
+            {
+                var hash = BitConverter.ToString(sha.ComputeHash(original)).Replace("-", "");
+                if (hash != SupportedHash && hash != UpdatedHash)
+                    throw new NotSupportedException("This Rider DLL has not been audited. Supported: Windows Rider 2026.2.3.1 (262.10968.170) / 2026.2.4.1 (262.11879.119). Independent launching remains available.");
+            }
 
             using (var resolver = new DefaultAssemblyResolver())
             using (var input = new MemoryStream(original))
@@ -66,7 +71,7 @@ namespace Avg.ProjectScriptEditor
                                 throw new NotSupportedException("Unexpected global editor access: " + target.FullName);
                         }
                     }
-                    if (redirected == 0 || refreshMethods != 2) throw new InvalidDataException("Unexpected Rider DLL structure.");
+                    if (redirected != 17 || refreshMethods != 2) throw new InvalidDataException("Unexpected Rider DLL structure.");
                     using (var output = new MemoryStream()) { assembly.Write(output); return output.ToArray(); }
                 }
             }

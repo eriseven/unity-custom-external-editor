@@ -51,7 +51,7 @@ namespace Avg.ProjectScriptEditor.Tests
             var dll = Path.Combine(Directory.GetParent(Path.GetDirectoryName(rider)).FullName, "plugins/rider-unity/EditorPlugin", RiderAssemblyAdapter.PluginName);
             var original = File.ReadAllBytes(dll);
             var adapted = RiderAssemblyAdapter.Adapt(original, out var count);
-            Check(count > 10, "All preference calls adapted");
+            Check(count == 17, "All 17 audited preference calls adapted");
             using (var assembly = AssemblyDefinition.ReadAssembly(new MemoryStream(adapted)))
             {
                 bool ReferencesPrefs(TypeDefinition t) => t.Methods.Where(m => m.HasBody).SelectMany(m => m.Body.Instructions)

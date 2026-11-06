@@ -42,7 +42,7 @@ namespace Avg.ProjectScriptEditor
             var integrationStatus = new Label();
             integrationStatus.AddToClassList("wrapped");
             panel.Add(integrationStatus);
-            panel.Add(new HelpBox("Experimental: Windows Rider 2026.2.3.1 only. Uses an in-memory adapted copy of Rider's plugin, with project-local preferences. Existing .sln/.csproj files are required. Disabling disconnects immediately; changing or re-enabling requires a script reload or restart. Unknown builds are refused.", HelpBoxMessageType.Warning));
+            panel.Add(new HelpBox("Experimental: Windows Rider 2026.2.3.1 / 2026.2.4.1 only. Uses an in-memory adapted copy of Rider's plugin, with project-local preferences. Existing .sln/.csproj files are required. Disabling disconnects immediately; changing or re-enabling requires a script reload or restart. Unknown builds are refused.", HelpBoxMessageType.Warning));
             var status = new Label();
             status.AddToClassList("wrapped");
             panel.Add(status);
